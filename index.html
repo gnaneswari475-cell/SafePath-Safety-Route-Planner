@@ -1,0 +1,22 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{font-family:Arial,sans-serif;margin:0;padding:4px;color:#ddd;background:transparent}button{padding:8px 12px;border-radius:8px;border:1px solid #777;cursor:pointer;margin-right:4px}#status{font-size:12px;margin-top:5px}
+</style></head><body>
+<button id="start">Request / refresh GPS permission</button><button id="stop">Stop GPS</button><div id="status">Waiting for GPS permission</div>
+<script>
+let watchId=null,lastSent=0;const el=document.getElementById("status");
+function sendValue(value){window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:setComponentValue",value:value},"*")}
+function ready(){window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:componentReady",apiVersion:1},"*");window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:setFrameHeight",height:70},"*")}
+function startWatch(){
+ if(!navigator.geolocation){el.textContent="Geolocation is not supported.";return}
+ if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+ el.textContent="Requesting location permission...";
+ watchId=navigator.geolocation.watchPosition(p=>{
+  let now=Date.now();if(now-lastSent<1200)return;lastSent=now;let c=p.coords;
+  sendValue({lat:c.latitude,lon:c.longitude,accuracy:c.accuracy,heading:c.heading,speed:c.speed,timestamp:p.timestamp});
+  el.textContent=`GPS active · accuracy ±${Math.round(c.accuracy)} m`;
+ },e=>{el.textContent=({1:"Location permission denied. Allow it in Chrome settings.",2:"Position unavailable; try outdoors.",3:"GPS timed out; waiting for another fix."})[e.code]||"GPS unavailable";},{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+}
+function stopWatch(){if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;el.textContent="GPS stopped";sendValue(null)}
+document.getElementById("start").addEventListener("click",startWatch);document.getElementById("stop").addEventListener("click",stopWatch);
+window.addEventListener("load",ready);window.addEventListener("message",e=>{if(e.data&&e.data.type==="streamlit:render")ready()});
+</script></body></html>
